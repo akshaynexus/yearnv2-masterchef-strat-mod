@@ -27,8 +27,8 @@ def get_pid(want, chef):
     for i in range(chef.poolLength()):
         if chef.poolInfo(i)[0] == want:
             return i
-    #if we found no pid for want,raise valueError
     raise ValueError("No pid found for Want")
+
 
 def main():
     print(f"You are using the '{network.show_active()}' network")
@@ -59,6 +59,14 @@ def main():
     reward = "0xf33121A2209609cAdc7349AcC9c40E41CE21c730"
     router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
 
-    pid = get_pid(vault.token(),Contract.from_explorer(masterchef))
+    pid = get_pid(vault.token(), Contract(masterchef))
     print(pid)
-    strategy = Strategy.deploy(vault, masterchef, reward,router,pid,{"from": dev}, publish_source=publish_source)
+    strategy = Strategy.deploy(
+        vault,
+        masterchef,
+        reward,
+        router,
+        pid,
+        {"from": dev},
+        publish_source=publish_source,
+    )
