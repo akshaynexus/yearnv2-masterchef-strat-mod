@@ -137,7 +137,7 @@ contract Strategy is BaseStrategy {
         router = IUniswapV2Router02(_router);
         pid = _pid;
         path = getTokenOutPath(_reward, address(want));
-
+        harvestOnLiq = true;
         require(
             address(want) == masterchef.poolInfo(pid).stakingToken,
             "wrong pid"
@@ -241,7 +241,7 @@ contract Strategy is BaseStrategy {
         )
     {
         if (masterchef.pendingReward(pid, address(this)) > 0)
-            masterchef.harvest(pid);
+            masterchef.deposit(pid, 0);
 
         _sell();
 
@@ -308,7 +308,7 @@ contract Strategy is BaseStrategy {
                     masterchef.pendingReward(pid, address(this)) > 0 &&
                     harvestOnLiq
                 ) {
-                    masterchef.harvest(pid);
+                    masterchef.deposit(pid, 0);
                 }
                 //Withdraw all funds to get max funds
                 masterchef.emergencyWithdraw(pid);
