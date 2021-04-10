@@ -34,7 +34,7 @@ def test_migration(
     vault.deposit(amount, {"from": whale})
     strategy.harvest()
 
-    tx = strategy.cloneStrategy(vault, bag_masterchef, bag, router, pid)
+    tx = strategy.cloneStrategy(vault, strategist, strategist, strategist, bag_masterchef, bag, router, pid)
 
     # migrate to a new strategy
     new_strategy = Strategy.at(tx.return_value)
