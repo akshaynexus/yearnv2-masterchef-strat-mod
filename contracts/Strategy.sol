@@ -73,6 +73,8 @@ contract Strategy is BaseStrategy {
 
     address[] public path;
 
+    bool public harvestOnLiq;
+
     event Cloned(address indexed clone);
 
     modifier onlyGuardians() {
@@ -143,25 +145,6 @@ contract Strategy is BaseStrategy {
 
         want.safeApprove(_masterchef, type(uint256).max);
         reward.safeApprove(_router, type(uint256).max);
-    }
-
-    function cloneStrategy(
-        address _vault,
-        address _masterchef,
-        address _reward,
-        address _router,
-        uint256 _pid
-    ) external returns (address newStrategy) {
-        newStrategy = this.cloneStrategy(
-            _vault,
-            msg.sender,
-            msg.sender,
-            msg.sender,
-            _masterchef,
-            _reward,
-            _router,
-            _pid
-        );
     }
 
     function cloneStrategy(
@@ -321,7 +304,10 @@ contract Strategy is BaseStrategy {
             }
             if (deposited > 0) {
                 //Workaround to get rewards even if we withdraw early
-                if (masterchef.pendingReward(pid, address(this)) > 0) {
+                if (
+                    masterchef.pendingReward(pid, address(this)) > 0 &&
+                    harvestOnLiq
+                ) {
                     masterchef.harvest(pid);
                 }
                 //Withdraw all funds to get max funds
@@ -348,6 +334,10 @@ contract Strategy is BaseStrategy {
 
     function emergencyWithdrawal(uint256 _pid) external onlyGovernance {
         masterchef.emergencyWithdraw(_pid);
+    }
+
+    function toggleharvestOnLiq() external onlyGuardians {
+        harvestOnLiq = !harvestOnLiq;
     }
 
     //sell all function

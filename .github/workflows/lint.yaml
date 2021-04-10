@@ -39,7 +39,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Install node.js dependencies
-        run: yarn --frozen-lockfile
+        run: yarn install
 
       - name: Run linter on *.sol and *.json
         run: yarn lint:check
