@@ -1,6 +1,15 @@
 from pathlib import Path
 
-from brownie import Strategy, accounts, config, network, project, web3, Contract
+from brownie import (
+    Strategy,
+    StrategyLegacy,
+    accounts,
+    config,
+    network,
+    project,
+    web3,
+    Contract,
+)
 from eth_utils import is_checksum_address
 import click
 
@@ -34,14 +43,12 @@ def main():
     print(f"You are using the '{network.show_active()}' network")
     dev = accounts.load(click.prompt("Account", type=click.Choice(accounts.load())))
     print(f"You are using: 'dev' [{dev.address}]")
-
     if input("Is there a Vault for this strategy already? y/[N]: ").lower() == "y":
         vault = Vault.at(get_address("Deployed Vault: "))
-        assert vault.apiVersion() == API_VERSION
+        # assert vault.apiVersion() == API_VERSION
     else:
         print("You should deploy one vault using scripts from Vault project")
         return  # TODO: Deploy one using scripts from Vault project
-
     print(
         f"""
     Strategy Parameters
@@ -59,14 +66,28 @@ def main():
     reward = "0xf33121A2209609cAdc7349AcC9c40E41CE21c730"
     router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
 
-    pid = get_pid(vault.token(), Contract(masterchef))
+    pid = get_pid(vault.token(), Contract.from_explorer(masterchef))
     print(pid)
-    strategy = Strategy.deploy(
-        vault,
-        masterchef,
-        reward,
-        router,
-        pid,
-        {"from": dev},
-        publish_source=publish_source,
-    )
+
+    legacyVault = vault.apiVersion() == "0.3.0"
+
+    if not legacyVault:
+        strategy = Strategy.deploy(
+            vault,
+            masterchef,
+            reward,
+            router,
+            pid,
+            {"from": dev},
+            publish_source=publish_source,
+        )
+    else:
+        strategy = StrategyLegacy.deploy(
+            vault,
+            masterchef,
+            reward,
+            router,
+            pid,
+            {"from": dev},
+            publish_source=publish_source,
+        )
