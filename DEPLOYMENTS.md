@@ -1,0 +1,8 @@
+# Prod vault strat deploys
+## StrategyMasterchefGenericMod:
+- [0x6107add73f80AC6015E85103D2f016C6373E4bDc](https://etherscan.io/address/0x6107add73f80AC6015E85103D2f016C6373E4bDc) - WETH - 0.3.2
+- [0xF0252a99691D591A5A458b9b4931bF1025BF6Ac3](https://etherscan.io/address/0xF0252a99691D591A5A458b9b4931bF1025BF6Ac3) - WBTC - 0.3.5
+
+## StrategyLegacy
+- [0x063303D9584Ac9A67855086e16Ca7212C109b7b4](https://etherscan.io/address/0x063303D9584Ac9A67855086e16Ca7212C109b7b4) - USDC - 0.3.0
+- [0xFc403fd9E7A916eC38437807704e92236cA1f7A5](https://etherscan.io/address/0xFc403fd9E7A916eC38437807704e92236cA1f7A5) - DAI  - 0.3.0
