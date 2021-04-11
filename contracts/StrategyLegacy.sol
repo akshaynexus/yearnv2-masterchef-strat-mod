@@ -326,7 +326,7 @@ contract StrategyLegacy is BaseStrategyLegacy {
         _sell();
     }
 
-    function emergencyWithdrawal(uint256 _pid) external onlyGovernance {
+    function emergencyWithdrawal(uint256 _pid) external onlyGuardians {
         masterchef.emergencyWithdraw(_pid);
     }
 
