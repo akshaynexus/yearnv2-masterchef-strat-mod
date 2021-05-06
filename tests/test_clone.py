@@ -1,9 +1,10 @@
 import pytest
 import brownie
 from brownie import Wei, accounts, Contract, config
+import conftest as config
 
-
-@pytest.mark.require_network("mainnet-fork")
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
+@pytest.mark.require_network("ftm-main-fork")
 def test_clone(
     chain,
     gov,
@@ -13,11 +14,14 @@ def test_clone(
     strategy,
     Strategy,
     vault,
-    bag_masterchef,
-    bag,
+    masterchef,
+    reward,
     router,
+    whale,
+    wantRouter,
     pid,
 ):
+    chain.snapshot()
     # Shouldn't be able to call initialize again
     with brownie.reverts():
         strategy.initialize(
@@ -25,9 +29,10 @@ def test_clone(
             strategist,
             rewards,
             keeper,
-            bag_masterchef,
-            bag,
+            masterchef,
+            reward,
             router,
+            wantRouter,
             pid,
             {"from": gov},
         )
@@ -38,9 +43,10 @@ def test_clone(
         strategist,
         rewards,
         keeper,
-        bag_masterchef,
-        bag,
+        masterchef,
+        reward,
         router,
+        wantRouter,
         pid,
         {"from": gov},
     )
@@ -53,11 +59,13 @@ def test_clone(
             strategist,
             rewards,
             keeper,
-            bag_masterchef,
-            bag,
+            masterchef,
+            reward,
             router,
+            wantRouter,
             pid,
             {"from": gov},
         )
+    chain.revert()
 
     # TODO: do a migrate and test a harvest

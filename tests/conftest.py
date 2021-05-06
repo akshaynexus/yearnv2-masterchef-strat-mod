@@ -1,6 +1,39 @@
 import pytest
-from brownie import config, Contract
+from brownie import config, Contract, accounts, Strategy
 
+fixtures = "currency", "whale","reward","masterchef","pid","router","wantRouter"
+params = [
+    pytest.param(
+        "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
+        "0x2F4ED858a60706f2991CeC2E66e13575FB9000f2",
+        "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6",
+        "0x78e9D247541ff7c365b50D2eE0defdd622016498",
+        1,
+        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
+        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
+        id="WFTM",
+    ),
+    pytest.param(
+        "0xf16e81dce15B08F326220742020379B855B87DF9",
+        "0x314e9c5BbDCb8eA9d779b39718665a31e49F7A21",
+        "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6",
+        "0x78e9D247541ff7c365b50D2eE0defdd622016498",
+        5,
+        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
+        "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+        id="ICE",
+    ),
+    pytest.param(
+        "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE",
+        "0x1F0C5a9046f0db0e8b651Cd9E8e23ba4Efe4B86d",
+        "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6",
+        "0x78e9D247541ff7c365b50D2eE0defdd622016498",
+        3,
+        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
+        "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
+        id="BOO",
+    ),
+]
 
 @pytest.fixture
 def gov(accounts):
@@ -11,46 +44,41 @@ def gov(accounts):
 def rewards(accounts):
     yield accounts[1]
 
+@pytest.fixture
+def currency(request, interface):
+    yield interface.ERC20(request.param)
 
 @pytest.fixture
-def whale(accounts):
-    # big binance7 wallet
-    # acc = accounts.at('0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8', force=True)
-    # big binance8 wallet
-    acc = accounts.at("0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503", force=True)
-
-    # lots of weth account
-    # wethAcc = accounts.at("0x767Ecb395def19Ab8d1b2FCc89B3DDfBeD28fD6b", force=True)
-    # weth.approve(acc, 2 ** 256 - 1, {"from": wethAcc})
-    # weth.transfer(acc, weth.balanceOf(wethAcc), {"from": wethAcc})
-
-    # assert weth.balanceOf(acc) > 0
+def whale(request, currency):
+    acc = accounts.at(request.param, force=True)
     yield acc
 
 
 @pytest.fixture
-def dai(interface):
-    yield interface.ERC20("0x6B175474E89094C44Da98b954EedeAC495271d0F")
+def reward(request, interface):
+    yield interface.ERC20(request.param)
+
+@pytest.fixture
+def masterchef(request, interface):
+    yield interface.ChefLike(request.param)
+
+# @pytest.fixture
+# def dai(interface):
+#     yield interface.ERC20("0x6B175474E89094C44Da98b954EedeAC495271d0F")
 
 
 @pytest.fixture
-def bag_masterchef(interface):
-    yield interface.ChefLike("0xd7fa57069E4767ddE13aD7970A562c43f03f8365")
+def router(request):
+    yield Contract(request.param)
+
+@pytest.fixture
+def wantRouter(request):
+    yield Contract(request.param)
 
 
 @pytest.fixture
-def bag(interface):
-    yield interface.ERC20("0xf33121A2209609cAdc7349AcC9c40E41CE21c730")
-
-
-@pytest.fixture
-def router():
-    yield Contract("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
-
-
-@pytest.fixture
-def pid():
-    yield 3
+def pid(request):
+    yield request.param
 
 
 @pytest.fixture
@@ -74,24 +102,24 @@ def keeper(accounts):
 
 
 @pytest.fixture
-def token(dai):
-    yield dai
+def token(currency):
+    yield currency
 
 
 @pytest.fixture
-def amount(accounts, token):
+def amount(accounts, token, whale):
     amount = 100 * 10 ** token.decimals()
     # In order to get some funds for the token you are about to use,
     # it impersonate an exchange address to use it's funds.
-    reserve = accounts.at("0xd551234ae421e3bcba99a0da6d736074f22192ff", force=True)
+    reserve = whale
     token.transfer(accounts[0], amount, {"from": reserve})
     yield amount
 
 
 @pytest.fixture
-def weth():
-    token_address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-    yield Contract(token_address)
+def weth(interface):
+    token_address = "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+    yield interface.ERC20(token_address)
 
 
 @pytest.fixture
@@ -142,12 +170,13 @@ def strategy(
     weth,
     Strategy,
     gov,
-    bag_masterchef,
-    bag,
+    masterchef,
+    reward,
     router,
+    wantRouter,
     pid,
 ):
-    strategy = strategist.deploy(Strategy, vault, bag_masterchef, bag, router, pid)
+    strategy = strategist.deploy(Strategy, vault, masterchef, reward, router, wantRouter, pid)
     strategy.setKeeper(keeper)
 
     vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})

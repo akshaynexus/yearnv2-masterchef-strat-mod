@@ -38,6 +38,13 @@ def get_pid(want, chef):
             return i
     raise ValueError("No pid found for Want")
 
+def getWantRouter(pid):
+    if pid == 1:
+        return "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
+    elif pid == 5:
+        return "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506"
+    elif pid == 3:
+        return "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
 
 def main():
     print(f"You are using the '{network.show_active()}' network")
@@ -62,12 +69,13 @@ def main():
     publish_source = click.confirm("Verify source on etherscan?")
     if input("Deploy Strategy? y/[N]: ").lower() != "y":
         return
-    masterchef = "0xd7fa57069E4767ddE13aD7970A562c43f03f8365"
-    reward = "0xf33121A2209609cAdc7349AcC9c40E41CE21c730"
-    router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
 
+    masterchef = "0x78e9D247541ff7c365b50D2eE0defdd622016498"
     pid = get_pid(vault.token(), Contract.from_explorer(masterchef))
     print(pid)
+    reward = "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6"
+    router = "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
+    wantRouter = getWantRouter(pid)
 
     legacyVault = vault.apiVersion() == "0.3.0"
 

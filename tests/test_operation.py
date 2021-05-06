@@ -1,11 +1,15 @@
 import brownie
-from brownie import Contract
+from brownie import Contract, chain
 from useful_methods import genericStateOfVault, genericStateOfStrat
 import random
+import pytest
+import conftest as config
 
 
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_apr(accounts, token, vault, strategy, chain, strategist, whale):
     strategist = accounts[0]
+    chain.snapshot()
 
     amount = 1 * 1e18
     # Deposit to the vault
@@ -44,12 +48,15 @@ def test_apr(accounts, token, vault, strategy, chain, strategist, whale):
         assert apr > 0
         # print(apr)
         print(f"implied apr: {apr:.8%}")
+    chain.revert()
 
 
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_normal_activity(accounts, token, vault, strategy, strategist, whale, chain):
 
     amount = 1 * 1e18
     bbefore = token.balanceOf(whale)
+    chain.snapshot()
 
     # Deposit to the vault
     token.approve(vault, amount, {"from": whale})
@@ -68,11 +75,14 @@ def test_normal_activity(accounts, token, vault, strategy, strategist, whale, ch
     assert token.balanceOf(whale) > bbefore
     genericStateOfStrat(strategy, token, vault)
     genericStateOfVault(vault, token)
+    chain.revert()
 
 
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_emergency_withdraw(
     accounts, token, vault, strategy, strategist, whale, chain, pid
 ):
+    chain.snapshot()
 
     amount = 1 * 1e18
     bbefore = token.balanceOf(whale)
@@ -87,9 +97,12 @@ def test_emergency_withdraw(
     assert token.balanceOf(strategy) == 0
     strategy.emergencyWithdrawal(pid, {"from": accounts[0]})
     assert token.balanceOf(strategy) >= amount
+    chain.revert()
 
 
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_emergency_exit(accounts, token, vault, strategy, strategist, amount):
+    chain.snapshot()
     # Deposit to the vault
     token.approve(vault.address, amount, {"from": accounts[0]})
     vault.deposit(amount, {"from": accounts[0]})
@@ -102,9 +115,12 @@ def test_emergency_exit(accounts, token, vault, strategy, strategist, amount):
     strategy.setEmergencyExit()
     strategy.harvest()
     assert token.balanceOf(strategy.address) < amount
+    chain.revert()
 
 
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount):
+    chain.snapshot()
     # Deposit to the vault
     token.approve(vault.address, amount, {"from": accounts[0]})
     vault.deposit(amount, {"from": accounts[0]})
@@ -119,9 +135,13 @@ def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount
     # strategy.harvest()
     # chain.sleep(3600 * 24)
     # assert token.balanceOf(strategy.address) > amount
+    chain.revert()
 
+
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 
 def test_change_debt(gov, token, vault, strategy, strategist, amount):
+    chain.snapshot()
     # Deposit to the vault and harvest
     token.approve(vault.address, amount, {"from": gov})
     vault.deposit(amount, {"from": gov})
@@ -133,38 +153,17 @@ def test_change_debt(gov, token, vault, strategy, strategist, amount):
     vault.updateStrategyDebtRatio(strategy.address, 10_000, {"from": gov})
     strategy.harvest()
     assert strategy.estimatedTotalAssets() >= amount
+    chain.revert()
 
     # In order to pass this tests, you will need to implement prepareReturn.
     # TODO: uncomment the following lines.
     # vault.updateStrategyDebtRatio(strategy.address, 5_000, {"from": gov})
     # assert token.balanceOf(strategy.address) == amount / 2
 
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
+def test_triggers(gov, vault, strategy, token, amount):
+    chain.snapshot()
 
-def test_sweep(gov, vault, strategy, token, amount, weth, weth_amout):
-    # Strategy want token doesn't work
-    token.transfer(strategy, amount, {"from": gov})
-    assert token.address == strategy.want()
-    assert token.balanceOf(strategy) > 0
-    with brownie.reverts("!want"):
-        strategy.sweep(token, {"from": gov})
-
-    # Vault share token doesn't work
-    with brownie.reverts("!shares"):
-        strategy.sweep(vault.address, {"from": gov})
-
-    # TODO: If you add protected tokens to the strategy.
-    # Protected token doesn't work
-    # with brownie.reverts("!protected"):
-    #     strategy.sweep(strategy.protectedToken(), {"from": gov})
-
-    weth.transfer(strategy, weth_amout, {"from": gov})
-    assert weth.address != strategy.want()
-    assert weth.balanceOf(gov) == 0
-    strategy.sweep(weth, {"from": gov})
-    assert weth.balanceOf(gov) == weth_amout
-
-
-def test_triggers(gov, vault, strategy, token, amount, weth, weth_amout):
     # Deposit to the vault and harvest
     token.approve(vault.address, amount, {"from": gov})
     vault.deposit(amount, {"from": gov})
@@ -173,3 +172,4 @@ def test_triggers(gov, vault, strategy, token, amount, weth, weth_amout):
 
     strategy.harvestTrigger(0)
     strategy.tendTrigger(0)
+    chain.revert()

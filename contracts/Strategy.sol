@@ -12,11 +12,11 @@ interface ChefLike {
     }
 
     struct PoolInfo {
-        address stakingToken; // Address of staking token contract.
+        address token; // Address of staking token contract.
         uint256 allocPoint; // How many allocation points assigned to this pool.
-        uint256 lastRewardBlock; // Last block number that distribution occurs.
-        uint256 accRewardPerShare; // Accumulated reward tokens per share, times 1e24. See below.
-        uint16 earlyWithdrawalFeeBP; // Early withdrawal fee in basis points
+        uint256 lastRewardTime; // Last block number that distribution occurs.
+        uint256 accESTPerShare; // Accumulated reward tokens per share, times 1e24. See below.
+        // uint16 earlyWithdrawalFeeBP; // Early withdrawal fee in basis points
     }
 
     function deposit(uint256 _pid, uint256 _amount) external;
@@ -34,7 +34,7 @@ interface ChefLike {
 
     function harvest(uint256 _pid) external;
 
-    function pendingReward(uint256 _pid, address _user)
+    function pendingEST(uint256 _pid, address _user)
         external
         view
         returns (uint256);
@@ -60,20 +60,29 @@ contract Strategy is BaseStrategy {
     ChefLike public masterchef;
     IERC20 public reward;
 
-    address private constant uniswapRouter =
-        address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    address private constant spookyswapRouter =
+        address(0xF491e7B69E4244ad4002BC14e878a34207E38c29);
     address private constant sushiswapRouter =
-        address(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
-    address private constant weth =
-        address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+    address private constant spiritswapRouter =
+        address(0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52);
 
-    IUniswapV2Router02 public router;
+    address private constant wftm =
+        address(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
+
+    //This will be the router we convert our rewards to ftm in
+    IUniswapV2Router02 public rewardRouter;
+    //This will be the router we use to convert wftm to want,this is for coins like boo or ice where liq is better on sushi or spooky than spiritswap
+    IUniswapV2Router02 public wantRouter;
 
     uint256 public pid;
+    uint256 public minProfit;
 
     address[] public path;
 
+    bool public bypassWithdrawFee;
     bool public harvestOnLiq;
+    bool public swapRewardViaSecondaryRouter;
 
     event Cloned(address indexed clone);
 
@@ -93,9 +102,10 @@ contract Strategy is BaseStrategy {
         address _masterchef,
         address _reward,
         address _router,
+        address _wantRouter,
         uint256 _pid
     ) public BaseStrategy(_vault) {
-        _initializeStrat(_masterchef, _reward, _router, _pid);
+        _initializeStrat(_masterchef, _reward, _router, _wantRouter, _pid);
     }
 
     function initialize(
@@ -106,45 +116,55 @@ contract Strategy is BaseStrategy {
         address _masterchef,
         address _reward,
         address _router,
+        address _wantRouter,
         uint256 _pid
     ) external {
         //note: initialise can only be called once. in _initialize in BaseStrategy we have: require(address(want) == address(0), "Strategy already initialized");
         _initialize(_vault, _strategist, _rewards, _keeper);
-        _initializeStrat(_masterchef, _reward, _router, _pid);
+        _initializeStrat(_masterchef, _reward, _router, _wantRouter, _pid);
+    }
+
+    function checkRouter(address _router) internal view returns (bool) {
+        return
+            _router == spookyswapRouter ||
+            _router == sushiswapRouter ||
+            _router == spiritswapRouter;
     }
 
     function _initializeStrat(
         address _masterchef,
         address _reward,
         address _router,
+        address _wantRouter,
         uint256 _pid
     ) internal {
         require(
-            address(router) == address(0),
+            address(rewardRouter) == address(0),
             "Masterchef Strategy already initialized"
         );
-        require(
-            _router == uniswapRouter || _router == sushiswapRouter,
-            "incorrect router"
-        );
+        require(checkRouter(_router), "incorrect rewardRouter");
+        require(checkRouter(_wantRouter), "incorrect wantRouter");
 
         // You can set these parameters on deployment to whatever you want
+        minReportDelay = 30 minutes;
         maxReportDelay = 6300;
         profitFactor = 1500;
         debtThreshold = 1_000_000 * 1e18;
         masterchef = ChefLike(_masterchef);
         reward = IERC20(_reward);
-        router = IUniswapV2Router02(_router);
+        rewardRouter = IUniswapV2Router02(_router);
+        wantRouter = IUniswapV2Router02(_wantRouter);
         pid = _pid;
         path = getTokenOutPath(_reward, address(want));
         harvestOnLiq = true;
-        require(
-            address(want) == masterchef.poolInfo(pid).stakingToken,
-            "wrong pid"
-        );
-
+        swapRewardViaSecondaryRouter = _router != _wantRouter;
+        require(address(want) == masterchef.poolInfo(pid).token, "wrong pid");
+        minProfit = 30 ether;
         want.safeApprove(_masterchef, type(uint256).max);
         reward.safeApprove(_router, type(uint256).max);
+        if (swapRewardViaSecondaryRouter)
+            IERC20(wftm).safeApprove(_wantRouter, type(uint256).max);
+        bypassWithdrawFee = false;
     }
 
     function cloneStrategy(
@@ -155,6 +175,7 @@ contract Strategy is BaseStrategy {
         address _masterchef,
         address _reward,
         address _router,
+        address _wantRouter,
         uint256 _pid
     ) external returns (address newStrategy) {
         // Copied from https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
@@ -183,6 +204,7 @@ contract Strategy is BaseStrategy {
             _masterchef,
             _reward,
             _router,
+            _wantRouter,
             _pid
         );
 
@@ -190,13 +212,18 @@ contract Strategy is BaseStrategy {
     }
 
     function setRouter(address _router) public onlyAuthorized {
-        require(
-            _router == uniswapRouter || _router == sushiswapRouter,
-            "incorrect router"
-        );
-        router = IUniswapV2Router02(_router);
-        reward.safeApprove(_router, 0);
+        require(checkRouter(_router), "incorrect rewardRouter");
+        reward.safeApprove(address(rewardRouter), 0);
+        rewardRouter = IUniswapV2Router02(_router);
         reward.safeApprove(_router, type(uint256).max);
+    }
+
+    function updateMinProfit(uint256 _minProfitNew) public onlyStrategist {
+        minProfit = _minProfitNew;
+    }
+
+    function toggleBypassWithdrawFee() public onlyAuthorized {
+        bypassWithdrawFee = !bypassWithdrawFee;
     }
 
     function getTokenOutPath(address _token_in, address _token_out)
@@ -204,14 +231,14 @@ contract Strategy is BaseStrategy {
         view
         returns (address[] memory _path)
     {
-        bool is_weth =
-            _token_in == address(weth) || _token_out == address(weth);
-        _path = new address[](is_weth ? 2 : 3);
+        bool is_wftm =
+            _token_in == address(wftm) || _token_out == address(wftm);
+        _path = new address[](is_wftm ? 2 : 3);
         _path[0] = _token_in;
-        if (is_weth) {
+        if (is_wftm) {
             _path[1] = _token_out;
         } else {
-            _path[1] = address(weth);
+            _path[1] = address(wftm);
             _path[2] = _token_out;
         }
     }
@@ -231,6 +258,37 @@ contract Strategy is BaseStrategy {
         return want.balanceOf(address(this)).add(deposited);
     }
 
+    function pendingReward() public view returns (uint256) {
+        return masterchef.pendingEST(pid, address(this));
+    }
+
+    function quote(
+        address token_in,
+        address token_out,
+        uint256 amount_in
+    ) internal view returns (uint256) {
+        if (amount_in < 10 wei) return 0;
+        uint256[] memory amounts =
+            rewardRouter.getAmountsOut(
+                amount_in,
+                getTokenOutPath(token_in, token_out)
+            );
+        return amounts[amounts.length - 1];
+    }
+
+    function harvestTrigger(uint256 callCostInWei)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        return
+            super.harvestTrigger(callCostInWei) ||
+            quote(address(reward), wftm, pendingReward().mul(10).div(100)) >=
+            minProfit;
+    }
+
     function prepareReturn(uint256 _debtOutstanding)
         internal
         override
@@ -240,8 +298,7 @@ contract Strategy is BaseStrategy {
             uint256 _debtPayment
         )
     {
-        if (masterchef.pendingReward(pid, address(this)) > 0)
-            masterchef.deposit(pid, 0);
+        if (pendingReward() > 0) masterchef.deposit(pid, 0);
 
         _sell();
 
@@ -289,6 +346,19 @@ contract Strategy is BaseStrategy {
         masterchef.deposit(pid, wantBalance);
     }
 
+    function withdrawFromFarm(uint256 _amountToWithdraw) internal {
+        if (bypassWithdrawFee) {
+            //Workaround to get rewards even if we withdraw early
+            if (pendingReward() > 0 && harvestOnLiq) {
+                masterchef.deposit(pid, 0);
+            }
+            //Withdraw all funds to get max funds
+            masterchef.emergencyWithdraw(pid);
+        } else {
+            masterchef.withdraw(pid, _amountToWithdraw);
+        }
+    }
+
     function liquidatePosition(uint256 _amountNeeded)
         internal
         override
@@ -303,15 +373,7 @@ contract Strategy is BaseStrategy {
                 amountToFree = deposited;
             }
             if (deposited > 0) {
-                //Workaround to get rewards even if we withdraw early
-                if (
-                    masterchef.pendingReward(pid, address(this)) > 0 &&
-                    harvestOnLiq
-                ) {
-                    masterchef.deposit(pid, 0);
-                }
-                //Withdraw all funds to get max funds
-                masterchef.emergencyWithdraw(pid);
+                withdrawFromFarm(amountToFree);
                 uint256 newWantBal = want.balanceOf(address(this));
                 if (newWantBal > amountToFree) {
                     //Deposit back excess to farm
@@ -343,11 +405,11 @@ contract Strategy is BaseStrategy {
     //sell all function
     function _sell() internal {
         uint256 rewardBal = reward.balanceOf(address(this));
-        if (rewardBal == 0) {
+        if (rewardBal < 10 wei) {
             return;
         }
-        if (path.length == 0) {
-            router.swapExactTokensForTokens(
+        if (!swapRewardViaSecondaryRouter) {
+            rewardRouter.swapExactTokensForTokens(
                 rewardBal,
                 uint256(0),
                 getTokenOutPath(address(reward), address(want)),
@@ -355,10 +417,17 @@ contract Strategy is BaseStrategy {
                 now
             );
         } else {
-            router.swapExactTokensForTokens(
+            rewardRouter.swapExactTokensForTokens(
                 rewardBal,
                 uint256(0),
-                path,
+                getTokenOutPath(address(reward), address(wftm)),
+                address(this),
+                now
+            );
+            wantRouter.swapExactTokensForTokens(
+                IERC20(wftm).balanceOf(address(this)),
+                uint256(0),
+                getTokenOutPath(address(wftm), address(want)),
                 address(this),
                 now
             );

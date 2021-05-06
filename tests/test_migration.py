@@ -1,11 +1,13 @@
 import brownie
 from brownie import Contract
+import pytest
+import conftest as config
 
 # TODO: Add tests that show proper migration of the strategy to a newer one
 #       Use another copy of the strategy to simulate the migration
 #       Show that nothing is lost!
 
-
+@pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_migration(
     token,
     vault,
@@ -15,15 +17,16 @@ def test_migration(
     strategist,
     whale,
     gov,
-    bag_masterchef,
-    bag,
+    masterchef,
+    reward,
     router,
+    wantRouter,
     pid,
 ):
-
+    chain.snapshot()
     with brownie.reverts("Strategy already initialized"):
         strategy.initialize(
-            vault, strategist, strategist, strategist, bag_masterchef, bag, router, pid
+            vault, strategist, strategist, strategist, masterchef, reward, router, wantRouter, pid
         )
 
     # Deposit to the vault and harvest
@@ -35,11 +38,12 @@ def test_migration(
     strategy.harvest()
 
     tx = strategy.cloneStrategy(
-        vault, strategist, strategist, strategist, bag_masterchef, bag, router, pid
+        vault, strategist, strategist, strategist, masterchef, reward, router,wantRouter, pid
     )
 
     # migrate to a new strategy
     new_strategy = Strategy.at(tx.return_value)
+    strategy.harvest()
 
     vault.migrateStrategy(strategy, new_strategy, {"from": gov})
     assert new_strategy.estimatedTotalAssets() >= amount
@@ -53,3 +57,4 @@ def test_migration(
     chain.sleep(60000)
     vault.withdraw({"from": whale})
     assert token.balanceOf(whale) > bbefore
+    chain.revert()
