@@ -228,8 +228,8 @@ contract Strategy is BaseStrategy {
 
     function setWantRouter(address _router) public onlyGovernance {
         require(checkRouter(_router), "incorrect rewardRouter");
-        IERC20(wftm).safeApprove(address(rewardRouter), 0);
-        rewardRouter = IUniswapV2Router02(_router);
+        IERC20(wftm).safeApprove(address(wantRouter), 0);
+        wantRouter = IUniswapV2Router02(_router);
         IERC20(wftm).safeApprove(_router, type(uint256).max);
         swapRewardViaSecondaryRouter = address(rewardRouter) != _router;
     }

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from brownie import *
+from brownie import Strategy, StrategyLegacy, config, project, network, Contract
 
 from eth_utils import is_checksum_address
 import click
@@ -65,7 +65,7 @@ def main():
         return
 
     masterchef = "0x78e9D247541ff7c365b50D2eE0defdd622016498"
-    pid = get_pid(vault.token(), interface.ChefLike(masterchef))
+    pid = get_pid(vault.token(), Contract.from_explorer(masterchef))
     print(pid)
     reward = "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6"
     router = "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
