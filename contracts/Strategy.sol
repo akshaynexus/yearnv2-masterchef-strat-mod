@@ -40,6 +40,14 @@ interface ChefLike {
         returns (uint256);
 }
 
+interface IERC20Extended {
+    function decimals() external view returns (uint8);
+
+    function name() external view returns (string memory);
+
+    function symbol() external view returns (string memory);
+}
+
 // These are the core Yearn libraries
 import "@yearnvaults/contracts/BaseStrategy.sol";
 import {
@@ -258,7 +266,13 @@ contract Strategy is BaseStrategy {
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
 
     function name() external view override returns (string memory) {
-        return "StrategyMasterchefGenericMod";
+        return
+            string(
+                abi.encodePacked(
+                    "EsterMasterchef",
+                    IERC20Extended(address(want)).name()
+                )
+            );
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {

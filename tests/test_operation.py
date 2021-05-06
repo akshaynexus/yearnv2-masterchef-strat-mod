@@ -139,7 +139,6 @@ def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount
 
 
 @pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
-
 def test_change_debt(gov, token, vault, strategy, strategist, amount):
     chain.snapshot()
     # Deposit to the vault and harvest
@@ -159,6 +158,7 @@ def test_change_debt(gov, token, vault, strategy, strategist, amount):
     # TODO: uncomment the following lines.
     # vault.updateStrategyDebtRatio(strategy.address, 5_000, {"from": gov})
     # assert token.balanceOf(strategy.address) == amount / 2
+
 
 @pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_triggers(gov, vault, strategy, token, amount):

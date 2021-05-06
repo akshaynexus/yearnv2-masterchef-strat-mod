@@ -3,6 +3,7 @@ import brownie
 from brownie import Wei, accounts, Contract, config
 import conftest as config
 
+
 @pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 @pytest.mark.require_network("ftm-main-fork")
 def test_clone(

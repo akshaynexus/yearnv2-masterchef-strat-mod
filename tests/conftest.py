@@ -1,7 +1,7 @@
 import pytest
 from brownie import config, Contract, accounts, Strategy
 
-fixtures = "currency", "whale","reward","masterchef","pid","router","wantRouter"
+fixtures = "currency", "whale", "reward", "masterchef", "pid", "router", "wantRouter"
 params = [
     pytest.param(
         "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
@@ -35,6 +35,7 @@ params = [
     ),
 ]
 
+
 @pytest.fixture
 def gov(accounts):
     yield accounts[0]
@@ -44,9 +45,11 @@ def gov(accounts):
 def rewards(accounts):
     yield accounts[1]
 
+
 @pytest.fixture
 def currency(request, interface):
     yield interface.ERC20(request.param)
+
 
 @pytest.fixture
 def whale(request, currency):
@@ -58,9 +61,11 @@ def whale(request, currency):
 def reward(request, interface):
     yield interface.ERC20(request.param)
 
+
 @pytest.fixture
 def masterchef(request, interface):
     yield interface.ChefLike(request.param)
+
 
 # @pytest.fixture
 # def dai(interface):
@@ -70,6 +75,7 @@ def masterchef(request, interface):
 @pytest.fixture
 def router(request):
     yield Contract(request.param)
+
 
 @pytest.fixture
 def wantRouter(request):
@@ -176,7 +182,9 @@ def strategy(
     wantRouter,
     pid,
 ):
-    strategy = strategist.deploy(Strategy, vault, masterchef, reward, router, wantRouter, pid)
+    strategy = strategist.deploy(
+        Strategy, vault, masterchef, reward, router, wantRouter, pid
+    )
     strategy.setKeeper(keeper)
 
     vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})

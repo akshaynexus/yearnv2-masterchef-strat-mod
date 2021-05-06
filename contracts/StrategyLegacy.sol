@@ -45,6 +45,14 @@ interface ChefLike {
         returns (uint256);
 }
 
+interface IERC20Extended {
+    function decimals() external view returns (uint8);
+
+    function name() external view returns (string memory);
+
+    function symbol() external view returns (string memory);
+}
+
 //This strategy is for 0.3.0 Vaults
 contract StrategyLegacy is BaseStrategyLegacy {
     using SafeERC20 for IERC20;
@@ -252,7 +260,13 @@ contract StrategyLegacy is BaseStrategyLegacy {
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
 
     function name() external view override returns (string memory) {
-        return "StrategyMasterchefGenericMod";
+        return
+            string(
+                abi.encodePacked(
+                    "EsterMasterchef",
+                    IERC20Extended(address(want)).name()
+                )
+            );
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {

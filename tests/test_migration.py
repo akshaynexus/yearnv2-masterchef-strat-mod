@@ -7,6 +7,7 @@ import conftest as config
 #       Use another copy of the strategy to simulate the migration
 #       Show that nothing is lost!
 
+
 @pytest.mark.parametrize(config.fixtures, config.params, indirect=True)
 def test_migration(
     token,
@@ -26,7 +27,15 @@ def test_migration(
     chain.snapshot()
     with brownie.reverts("Strategy already initialized"):
         strategy.initialize(
-            vault, strategist, strategist, strategist, masterchef, reward, router, wantRouter, pid
+            vault,
+            strategist,
+            strategist,
+            strategist,
+            masterchef,
+            reward,
+            router,
+            wantRouter,
+            pid,
         )
 
     # Deposit to the vault and harvest
@@ -38,7 +47,15 @@ def test_migration(
     strategy.harvest()
 
     tx = strategy.cloneStrategy(
-        vault, strategist, strategist, strategist, masterchef, reward, router,wantRouter, pid
+        vault,
+        strategist,
+        strategist,
+        strategist,
+        masterchef,
+        reward,
+        router,
+        wantRouter,
+        pid,
     )
 
     # migrate to a new strategy
