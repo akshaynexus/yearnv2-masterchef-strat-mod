@@ -98,7 +98,7 @@ contract StrategyLegacy is BaseStrategyLegacy {
         address _router,
         address _wantRouter,
         uint256 _pid
-    ) public BaseStrategy(_vault) {
+    ) public BaseStrategyLegacy(_vault) {
         _initializeStrat(_masterchef, _reward, _router, _wantRouter, _pid);
     }
 
