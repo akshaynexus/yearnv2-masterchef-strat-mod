@@ -13,15 +13,15 @@ import "./Interfaces/UniswapInterfaces/IUniswapV2Router02.sol";
 interface ChefLike {
     struct UserInfo {
         uint256 amount; // How many LP tokens the user has provided.
-        uint256 rewardDebt; // Reward debt.set
+        uint256 rewardDebt; // Reward debt.
     }
 
     struct PoolInfo {
-        address stakingToken; // Address of staking token contract.
+        address token; // Address of staking token contract.
         uint256 allocPoint; // How many allocation points assigned to this pool.
-        uint256 lastRewardBlock; // Last block number that distribution occurs.
-        uint256 accRewardPerShare; // Accumulated reward tokens per share, times 1e24. See below.
-        uint16 earlyWithdrawalFeeBP; // Early withdrawal fee in basis points
+        uint256 lastRewardTime; // Last block number that distribution occurs.
+        uint256 accESTPerShare; // Accumulated reward tokens per share, times 1e24. See below.
+        // uint16 earlyWithdrawalFeeBP; // Early withdrawal fee in basis points
     }
 
     function deposit(uint256 _pid, uint256 _amount) external;
@@ -39,7 +39,7 @@ interface ChefLike {
 
     function harvest(uint256 _pid) external;
 
-    function pendingReward(uint256 _pid, address _user)
+    function pendingEST(uint256 _pid, address _user)
         external
         view
         returns (uint256);
@@ -190,7 +190,7 @@ contract StrategyLegacy is BaseStrategyLegacy {
             newStrategy := create(0, clone_code, 0x37)
         }
 
-        Strategy(newStrategy).initialize(
+        StrategyLegacy(newStrategy).initialize(
             _vault,
             _strategist,
             _rewards,
@@ -205,11 +205,19 @@ contract StrategyLegacy is BaseStrategyLegacy {
         emit Cloned(newStrategy);
     }
 
-    function setRouter(address _router) public onlyAuthorized {
+    function setRouter(address _router) public onlyGovernance {
         require(checkRouter(_router), "incorrect rewardRouter");
         reward.safeApprove(address(rewardRouter), 0);
         rewardRouter = IUniswapV2Router02(_router);
         reward.safeApprove(_router, type(uint256).max);
+    }
+
+    function setWantRouter(address _router) public onlyGovernance {
+        require(checkRouter(_router), "incorrect rewardRouter");
+        IERC20(wftm).safeApprove(address(rewardRouter), 0);
+        rewardRouter = IUniswapV2Router02(_router);
+        IERC20(wftm).safeApprove(_router, type(uint256).max);
+        swapRewardViaSecondaryRouter = address(rewardRouter) != _router;
     }
 
     function updateMinProfit(uint256 _minProfitNew) public onlyStrategist {

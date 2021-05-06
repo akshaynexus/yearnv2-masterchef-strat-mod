@@ -211,11 +211,19 @@ contract Strategy is BaseStrategy {
         emit Cloned(newStrategy);
     }
 
-    function setRouter(address _router) public onlyAuthorized {
+    function setRouter(address _router) public onlyGovernance {
         require(checkRouter(_router), "incorrect rewardRouter");
         reward.safeApprove(address(rewardRouter), 0);
         rewardRouter = IUniswapV2Router02(_router);
         reward.safeApprove(_router, type(uint256).max);
+    }
+
+    function setWantRouter(address _router) public onlyGovernance {
+        require(checkRouter(_router), "incorrect rewardRouter");
+        IERC20(wftm).safeApprove(address(rewardRouter), 0);
+        rewardRouter = IUniswapV2Router02(_router);
+        IERC20(wftm).safeApprove(_router, type(uint256).max);
+        swapRewardViaSecondaryRouter = address(rewardRouter) != _router;
     }
 
     function updateMinProfit(uint256 _minProfitNew) public onlyStrategist {
