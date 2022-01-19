@@ -81,7 +81,7 @@ contract Strategy is BaseStrategy {
     address private constant mim =
         address(0x82f0B8B456c1A451378467398982d4834b6829c1);
 
-    address internal constant bridgeAsset = mim;
+    address public  bridgeAsset;
     //This will be the router we convert our rewards to ftm in
     IUniswapV2Router02 public rewardRouter;
     //This will be the router we use to convert wftm to want,this is for coins like boo or ice where liq is better on sushi or spooky than spiritswap
@@ -177,6 +177,7 @@ contract Strategy is BaseStrategy {
         if (swapRewardViaSecondaryRouter)
             IERC20(bridgeAsset).safeApprove(_wantRouter, type(uint256).max);
         bypassWithdrawFee = false;
+        bridgeAsset = mim;
     }
 
     function cloneStrategy(
@@ -230,11 +231,17 @@ contract Strategy is BaseStrategy {
         reward.safeApprove(_router, type(uint256).max);
     }
 
+    function setBridgeAsset(address _asset) public onlyAuthorized {
+        bridgeAsset = _asset;
+        IERC20(bridgeAsset).safeApprove(address(wantRouter), 0);
+        IERC20(bridgeAsset).safeApprove(_router, type(uint256).max);
+    }
+
     function setWantRouter(address _router) public onlyGovernance {
         require(checkRouter(_router), "incorrect rewardRouter");
-        IERC20(wftm).safeApprove(address(wantRouter), 0);
+        IERC20(bridgeAsset).safeApprove(address(wantRouter), 0);
         wantRouter = IUniswapV2Router02(_router);
-        IERC20(wftm).safeApprove(_router, type(uint256).max);
+        IERC20(bridgeAsset).safeApprove(_router, type(uint256).max);
         swapRewardViaSecondaryRouter = address(rewardRouter) != _router;
     }
 
