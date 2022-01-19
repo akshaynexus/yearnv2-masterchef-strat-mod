@@ -34,7 +34,7 @@ interface ChefLike {
 
     function harvest(uint256 _pid) external;
 
-    function pendingEST(uint256 _pid, address _user)
+    function pendingRewards(uint256 _pid, address _user)
         external
         view
         returns (uint256);
@@ -78,6 +78,10 @@ contract Strategy is BaseStrategy {
     address private constant wftm =
         address(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
 
+    address private constant mim =
+        address(0x82f0B8B456c1A451378467398982d4834b6829c1);
+
+    address internal constant bridgeAsset = mim;
     //This will be the router we convert our rewards to ftm in
     IUniswapV2Router02 public rewardRouter;
     //This will be the router we use to convert wftm to want,this is for coins like boo or ice where liq is better on sushi or spooky than spiritswap
@@ -171,7 +175,7 @@ contract Strategy is BaseStrategy {
         want.safeApprove(_masterchef, type(uint256).max);
         reward.safeApprove(_router, type(uint256).max);
         if (swapRewardViaSecondaryRouter)
-            IERC20(wftm).safeApprove(_wantRouter, type(uint256).max);
+            IERC20(bridgeAsset).safeApprove(_wantRouter, type(uint256).max);
         bypassWithdrawFee = false;
     }
 
@@ -247,15 +251,20 @@ contract Strategy is BaseStrategy {
         view
         returns (address[] memory _path)
     {
-        bool is_wftm =
-            _token_in == address(wftm) || _token_out == address(wftm);
-        _path = new address[](is_wftm ? 2 : 3);
+        bool is_mim =
+            _token_in == address(bridgeAsset) || _token_out == address(bridgeAsset);
+        _path = new address[]((is_mim) ? 2 : (_token_out == wftm ? 3 : 4));
         _path[0] = _token_in;
-        if (is_wftm) {
+        if (is_mim) {
             _path[1] = _token_out;
-        } else {
-            _path[1] = address(wftm);
-            _path[2] = _token_out;
+        }else if (_token_out == wftm) {
+            _path[1] = bridgeAsset;
+            _path[2] = wftm;
+        }
+        else {
+            _path[1] = bridgeAsset;
+            _path[2] = wftm;
+            _path[3] = _token_out;
         }
     }
 
@@ -269,7 +278,7 @@ contract Strategy is BaseStrategy {
         return
             string(
                 abi.encodePacked(
-                    "EsterMasterchef",
+                    "VeDaoMasterChef",
                     IERC20Extended(address(want)).name()
                 )
             );
@@ -281,7 +290,7 @@ contract Strategy is BaseStrategy {
     }
 
     function pendingReward() public view returns (uint256) {
-        return masterchef.pendingEST(pid, address(this));
+        return masterchef.pendingRewards(pid, address(this));
     }
 
     function quote(
@@ -289,13 +298,26 @@ contract Strategy is BaseStrategy {
         address token_out,
         uint256 amount_in
     ) internal view returns (uint256) {
+        if(token_in == token_out) return amount_in;
         if (amount_in < 10 wei) return 0;
         uint256[] memory amounts =
             rewardRouter.getAmountsOut(
                 amount_in,
-                getTokenOutPath(token_in, token_out)
+                getTokenOutPath(token_in, swapRewardViaSecondaryRouter ? bridgeAsset : token_out )
             );
-        return amounts[amounts.length - 1];
+        uint baseAmount =  amounts[amounts.length - 1];
+        if(swapRewardViaSecondaryRouter) {
+           uint256[] memory amounts2  = wantRouter.getAmountsOut(
+                baseAmount,
+                getTokenOutPath(bridgeAsset, address(want))
+            );
+            return amounts2[amounts2.length - 1];
+        }
+        return baseAmount;
+    }
+
+    function pendingProfit() public view returns (uint) {
+        return quote(address(reward), wftm, pendingReward());
     }
 
     function harvestTrigger(uint256 callCostInWei)
@@ -307,7 +329,7 @@ contract Strategy is BaseStrategy {
     {
         return
             super.harvestTrigger(callCostInWei) ||
-            quote(address(reward), wftm, pendingReward().mul(10).div(100)) >=
+            pendingProfit().mul(10).div(100) >=
             minProfit;
     }
 
@@ -442,18 +464,25 @@ contract Strategy is BaseStrategy {
             rewardRouter.swapExactTokensForTokens(
                 rewardBal,
                 uint256(0),
-                getTokenOutPath(address(reward), address(wftm)),
+                getTokenOutPath(address(reward), address(bridgeAsset)),
                 address(this),
                 now
             );
             wantRouter.swapExactTokensForTokens(
-                IERC20(wftm).balanceOf(address(this)),
+                IERC20(bridgeAsset).balanceOf(address(this)),
                 uint256(0),
-                getTokenOutPath(address(wftm), address(want)),
+                getTokenOutPath(address(bridgeAsset), address(want)),
                 address(this),
                 now
             );
         }
+    }
+
+    function ethToWant(uint256 _amtInWei) public view virtual override returns (uint256) {
+        return quote(wftm,address(want),_amtInWei);
+    }
+    function liquidateAllPositions() internal virtual override returns (uint256 _amountFreed) {
+        (_amountFreed,) = liquidatePosition(type(uint256).max);
     }
 
     function protectedTokens()

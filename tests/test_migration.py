@@ -39,11 +39,12 @@ def test_migration(
         )
 
     # Deposit to the vault and harvest
-    amount = 1 * 1e18
+    amount = 110000 * 1e18
     bbefore = token.balanceOf(whale)
 
     token.approve(vault.address, amount, {"from": whale})
     vault.deposit(amount, {"from": whale})
+
     strategy.harvest()
 
     tx = strategy.cloneStrategy(
@@ -61,6 +62,9 @@ def test_migration(
     # migrate to a new strategy
     new_strategy = Strategy.at(tx.return_value)
     strategy.harvest()
+    chain.mine(20)
+    chain.sleep(2000)
+    strategy.harvest({"from": gov})
 
     vault.migrateStrategy(strategy, new_strategy, {"from": gov})
     assert new_strategy.estimatedTotalAssets() >= amount

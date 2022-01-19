@@ -1,38 +1,43 @@
 import pytest
 from brownie import config, Contract, accounts, Strategy
 
+masterchef_addr = "0xE04C26444d37fE103B9cc8033c99b09D47056f51"
+reward_addr = "0x911da02C1232A3c3E1418B834A311921143B04d7"
+spookyswap_router = "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+spiritswap_router = "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
+
 fixtures = "currency", "whale", "reward", "masterchef", "pid", "router", "wantRouter"
 params = [
     pytest.param(
         "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
-        "0x2F4ED858a60706f2991CeC2E66e13575FB9000f2",
-        "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6",
-        "0x78e9D247541ff7c365b50D2eE0defdd622016498",
-        1,
-        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
-        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
+        "0x5AA53f03197E08C4851CAD8C92c7922DA5857E5d",
+        reward_addr,
+        masterchef_addr,
+        0,
+        spiritswap_router,
+        spookyswap_router,
         id="WFTM",
     ),
-    pytest.param(
-        "0xf16e81dce15B08F326220742020379B855B87DF9",
-        "0x314e9c5BbDCb8eA9d779b39718665a31e49F7A21",
-        "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6",
-        "0x78e9D247541ff7c365b50D2eE0defdd622016498",
-        5,
-        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
-        "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
-        id="ICE",
-    ),
-    pytest.param(
-        "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE",
-        "0x1F0C5a9046f0db0e8b651Cd9E8e23ba4Efe4B86d",
-        "0x181F3F22C9a751E2ce673498A03E1FDFC0ebBFB6",
-        "0x78e9D247541ff7c365b50D2eE0defdd622016498",
-        3,
-        "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
-        "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
-        id="BOO",
-    ),
+    # pytest.param(
+    #     "0xf16e81dce15B08F326220742020379B855B87DF9",
+    #     "0x314e9c5BbDCb8eA9d779b39718665a31e49F7A21",
+    #     reward_addr,
+    #     masterchef_addr,
+    #     5,
+    #     spiritswap_router,
+    #     "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+    #     id="ICE",
+    # ),
+    # pytest.param(
+    #     "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE",
+    #     "0x1F0C5a9046f0db0e8b651Cd9E8e23ba4Efe4B86d",
+    #     reward_addr,
+    #     masterchef_addr,
+    #     3,
+    #     spiritswap_router,
+    #     spookyswap_router,
+    #     id="BOO",
+    # ),
 ]
 
 
