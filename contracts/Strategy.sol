@@ -162,6 +162,8 @@ contract Strategy is BaseStrategy {
         maxReportDelay = 6300;
         profitFactor = 1500;
         debtThreshold = 1_000_000 * 1e18;
+        bridgeAsset = mim;
+
         masterchef = ChefLike(_masterchef);
         reward = IERC20(_reward);
         rewardRouter = IUniswapV2Router02(_router);
@@ -177,7 +179,6 @@ contract Strategy is BaseStrategy {
         if (swapRewardViaSecondaryRouter)
             IERC20(bridgeAsset).safeApprove(_wantRouter, type(uint256).max);
         bypassWithdrawFee = false;
-        bridgeAsset = mim;
     }
 
     function cloneStrategy(
