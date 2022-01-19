@@ -18,6 +18,16 @@ params = [
         spookyswap_router,
         id="WFTM",
     ),
+    pytest.param(
+        "0xdc301622e621166BD8E82f2cA0A26c13Ad0BE355",
+        "0x4E6854EA84884330207fB557D1555961D85Fc17E",
+        reward_addr,
+        masterchef_addr,
+        5,
+        spiritswap_router,
+        spiritswap_router,
+        id="FRAX",
+    ),
     # pytest.param(
     #     "0xf16e81dce15B08F326220742020379B855B87DF9",
     #     "0x314e9c5BbDCb8eA9d779b39718665a31e49F7A21",

@@ -11,7 +11,8 @@ Vault = project.load(
 ).Vault
 
 masterchef_addr = "0xE04C26444d37fE103B9cc8033c99b09D47056f51"
-
+spookyswap_router = "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+spiritswap_router = "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
 
 def get_address(msg: str) -> str:
     while True:
@@ -32,18 +33,26 @@ def get_pid(want, chef):
             return i
     raise ValueError("No pid found for Want")
 
+def getRouter(pid):
+    if pid == 0:
+        return spiritswap_router
+    elif pid == 5:
+        return spiritswap_router
+    elif pid == 3:
+        return spookyswap_router
 
 def getWantRouter(pid):
-    if pid == 1:
-        return "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
+    if pid == 0:
+        return spookyswap_router
     elif pid == 5:
-        return "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506"
+        return spiritswap_router
     elif pid == 3:
-        return "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+        return spookyswap_router
+
 
 
 EXPERIMENTAL_DEPLOY = False
-WANT_TOKEN = "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+WANT_TOKEN = "0xdc301622e621166BD8E82f2cA0A26c13Ad0BE355"
 
 
 def main():
@@ -98,8 +107,8 @@ def main():
     pid = get_pid(vault.token(), Contract.from_explorer(masterchef))
     print(pid)
     reward = "0x911da02C1232A3c3E1418B834A311921143B04d7"
-    router = "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
-    wantRouter = "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+    router = getRouter(pid)
+    wantRouter = getWantRouter(pid)
 
     legacyVault = vault.apiVersion() == "0.3.0"
 

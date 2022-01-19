@@ -317,7 +317,7 @@ contract Strategy is BaseStrategy {
     }
 
     function pendingProfit() public view returns (uint) {
-        return quote(address(reward), wftm, pendingReward());
+        return quote(address(reward), address(want), pendingReward());
     }
 
     function harvestTrigger(uint256 callCostInWei)
