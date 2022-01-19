@@ -234,7 +234,7 @@ contract Strategy is BaseStrategy {
     function setBridgeAsset(address _asset) public onlyAuthorized {
         bridgeAsset = _asset;
         IERC20(bridgeAsset).safeApprove(address(wantRouter), 0);
-        IERC20(bridgeAsset).safeApprove(_router, type(uint256).max);
+        IERC20(bridgeAsset).safeApprove(address(wantRouter), type(uint256).max);
     }
 
     function setWantRouter(address _router) public onlyGovernance {
