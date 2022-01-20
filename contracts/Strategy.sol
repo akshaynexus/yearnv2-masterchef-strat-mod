@@ -261,9 +261,9 @@ contract Strategy is BaseStrategy {
     {
         bool is_mim =
             _token_in == address(bridgeAsset) || _token_out == address(bridgeAsset);
-        _path = new address[]((is_mim || token_in == wftm) ? 2 : (_token_out == wftm ? 3 : 4));
+        _path = new address[]((is_mim || _token_in == wftm) ? 2 : (_token_out == wftm ? 3 : 4));
         _path[0] = _token_in;
-        if (is_mim || token_in == wftm) {
+        if (is_mim || _token_in == wftm) {
             _path[1] = _token_out;
         }else if (_token_out == wftm) {
             _path[1] = bridgeAsset;
