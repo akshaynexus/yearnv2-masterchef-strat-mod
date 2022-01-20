@@ -261,9 +261,9 @@ contract Strategy is BaseStrategy {
     {
         bool is_mim =
             _token_in == address(bridgeAsset) || _token_out == address(bridgeAsset);
-        _path = new address[]((is_mim) ? 2 : (_token_out == wftm ? 3 : 4));
+        _path = new address[]((is_mim || token_in == wftm) ? 2 : (_token_out == wftm ? 3 : 4));
         _path[0] = _token_in;
-        if (is_mim) {
+        if (is_mim || token_in == wftm) {
             _path[1] = _token_out;
         }else if (_token_out == wftm) {
             _path[1] = bridgeAsset;
@@ -427,7 +427,7 @@ contract Strategy is BaseStrategy {
             if (deposited > 0) {
                 withdrawFromFarm(amountToFree);
                 uint256 newWantBal = want.balanceOf(address(this));
-                if (newWantBal > amountToFree) {
+                if (newWantBal > amountToFree && bypassWithdrawFee) {
                     //Deposit back excess to farm
                     masterchef.deposit(pid, newWantBal.sub(amountToFree));
                 }
@@ -472,14 +472,14 @@ contract Strategy is BaseStrategy {
             rewardRouter.swapExactTokensForTokens(
                 rewardBal,
                 uint256(0),
-                getTokenOutPath(address(reward), address(bridgeAsset)),
+                getTokenOutPath(address(reward), address(wftm)),
                 address(this),
                 now
             );
             wantRouter.swapExactTokensForTokens(
                 IERC20(bridgeAsset).balanceOf(address(this)),
                 uint256(0),
-                getTokenOutPath(address(bridgeAsset), address(want)),
+                getTokenOutPath(address(wftm), address(want)),
                 address(this),
                 now
             );
