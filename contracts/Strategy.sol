@@ -311,13 +311,13 @@ contract Strategy is BaseStrategy {
         uint256[] memory amounts =
             rewardRouter.getAmountsOut(
                 amount_in,
-                getTokenOutPath(token_in, swapRewardViaSecondaryRouter ? bridgeAsset : token_out )
+                getTokenOutPath(token_in, swapRewardViaSecondaryRouter ? wftm : token_out )
             );
         uint baseAmount =  amounts[amounts.length - 1];
         if(swapRewardViaSecondaryRouter) {
            uint256[] memory amounts2  = wantRouter.getAmountsOut(
                 baseAmount,
-                getTokenOutPath(bridgeAsset, address(want))
+                getTokenOutPath(wftm, address(want))
             );
             return amounts2[amounts2.length - 1];
         }
